@@ -3,7 +3,7 @@ package tylog
 import (
 	"time"
 
-	"github.com/TuyaInc/tuya_pulsar_sdk_go/pkg/tyutils"
+	"github.com/tuya/tuya-pulsar-sdk-go/pkg/tyutils"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	lumberjack "gopkg.in/natefinch/lumberjack.v2"
@@ -44,8 +44,8 @@ func NewLog(config *LogConfig) *zap.Logger {
 
 	// lumberjack 实现了一些日志分割的功能
 	jLoger := &lumberjack.Logger{
-		Filename: filePath,
-		MaxSize:  config.maxSize,
+		Filename:   filePath,
+		MaxSize:    config.maxSize,
 		MaxBackups: config.maxBackups,
 	}
 	jLoger.LocalTime = config.localTime

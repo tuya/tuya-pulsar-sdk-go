@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/TuyaInc/tuya_pulsar_sdk_go/pkg/tylog"
+	"github.com/tuya/tuya-pulsar-sdk-go/pkg/tylog"
 
-	"github.com/TuyaInc/pulsar-client-go/core/manage"
-	"github.com/TuyaInc/pulsar-client-go/core/msg"
+	"github.com/tuya/pulsar-client-go/core/manage"
+	"github.com/tuya/pulsar-client-go/core/msg"
 )
 
 const (
