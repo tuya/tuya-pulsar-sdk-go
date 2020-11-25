@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/TuyaInc/tuya_pulsar_sdk_go/pkg/tylog"
+	"github.com/tuya/tuya-pulsar-sdk-go/pkg/tylog"
 )
 
 type ConsumerList struct {
