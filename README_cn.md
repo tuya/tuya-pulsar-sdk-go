@@ -4,9 +4,9 @@
 
 ## 使用前准备
 
-1. AccessID 由涂鸦平台提供
-2. AccessKey 由涂鸦平台提供
-3. pulsar地址 根据不同的业务区域，选择pulsar地址。可以从涂鸦对接文档中查询
+1. AccessID：由涂鸦平台提供
+2. AccessKey：由涂鸦平台提供
+3. pulsar地址：根据不同的业务区域选择 Pulsar 地址。可以从涂鸦对接文档中查询获取。
 
 ## Example
 
