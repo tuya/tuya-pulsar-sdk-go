@@ -6,10 +6,6 @@
 
 Tuya pulsar client SDK for Golang
 
-## Introduction
-
-Tuya pulsar client SDK for Golang.
-
 ## Preparation
 
 1. AccessID: Provided by Tuya platform.
@@ -91,8 +87,8 @@ func (h *helloHandler) HandlePayload(ctx context.Context, msg *pulsar.Message, p
 ## Precautions
 
 1. Make sure that the accessID and accessKey are correct.
-2. Make sure that the Pulsar address is correct, you should use 'pulsar://mqe.tuyaus.com:7285' instead of
-'pulsar+ssl://mqe.tuyaus.com:7285'.
+2. Make sure that the Pulsar address is correct, you should use `pulsar://mqe.tuyaus.com:7285` instead of
+`pulsar+ssl://mqe.tuyaus.com:7285`.
 3. Make sure that the SDK code version you use is the latest.
 
 ## About debug
@@ -106,8 +102,8 @@ func main(){
 }
 ```
 
-Through the following code, you can see the log information of 'tuya_pulsar_go_sdk'.
-At the same time, the log will be saved in the 'logs/sdk.log' file.
+Through the following code, you can see the log information of `tuya_pulsar_go_sdk`.
+At the same time, the log will be saved in the `logs/sdk.log` file.
 ```
 func main(){
 	tylog.SetGlobalLog("sdk", false)
