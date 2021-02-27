@@ -4,10 +4,6 @@
 
 ## Introduction
 
-Tuya pulsar client SDK for Golang
-
-## Introduction
-
 Tuya pulsar client SDK for Golang.
 
 ## Preparation
