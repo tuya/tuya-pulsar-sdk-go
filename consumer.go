@@ -120,7 +120,15 @@ func (c *consumerImpl) Handler(ctx context.Context, handler PayloadHandler, m *M
 
 	now = time.Now()
 	ackCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	err = c.csm.Ack(ackCtx, *m)
+
+	retryCount := 3
+	for j := 0; j < retryCount; j++ {
+		err = c.csm.Ack(ackCtx, *m)
+		if err == nil {
+			tylog.Error("ack failed", tylog.ErrorField(err))
+			time.Sleep(2 * time.Second)
+		}
+	}
 	cancel()
 	spend = time.Since(now)
 	fields = append(fields, tylog.String("Ack spend", spend.String()))
