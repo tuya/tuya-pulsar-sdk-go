@@ -17,16 +17,14 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"time"
 
 	pulsar "github.com/tuya/tuya-pulsar-sdk-go"
 	"github.com/tuya/tuya-pulsar-sdk-go/pkg/tylog"
 	"github.com/tuya/tuya-pulsar-sdk-go/pkg/tyutils"
-	"github.com/sirupsen/logrus"
 )
 
 func main() {
-	pulsar.SetInternalLogLevel(logrus.DebugLevel)
+	// SetInternalLogLevel(logrus.DebugLevel)
 	tylog.SetGlobalLog("sdk", false)
 	accessID := "accessID"
 	accessKey := "accessKey"
@@ -47,15 +45,13 @@ func main() {
 
 	// handle message
 	csm.ReceiveAndHandle(context.Background(), &helloHandler{AesSecret: accessKey[8:24]})
-
-	time.Sleep(10 * time.Second)
 }
 
 type helloHandler struct {
 	AesSecret string
 }
 
-func (h *helloHandler) HandlePayload(ctx context.Context, msg *pulsar.Message, payload []byte) error {
+func (h *helloHandler) HandlePayload(ctx context.Context, msg pulsar.Message, payload []byte) error {
 	tylog.Info("payload preview", tylog.String("payload", string(payload)))
 
 	// let's decode the payload with AES
@@ -76,6 +72,7 @@ func (h *helloHandler) HandlePayload(ctx context.Context, msg *pulsar.Message, p
 
 	return nil
 }
+
 
 
 ```

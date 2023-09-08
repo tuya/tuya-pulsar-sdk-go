@@ -2,55 +2,132 @@ package pulsar
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
+	"github.com/apache/pulsar-client-go/pulsar"
+	"github.com/tuya/tuya-pulsar-sdk-go/pkg/tylog"
 	"strings"
 	"time"
-
-	"github.com/tuya/tuya-pulsar-sdk-go/pkg/tylog"
-
-	"github.com/tuya/pulsar-client-go/core/manage"
-	"github.com/tuya/pulsar-client-go/core/msg"
 )
 
 const (
-	DefaultFlowPeriodSecond = 30
-	DefaultFlowPermit       = 10
-
-	PulsarAddrCN = "pulsar://mqe.tuyacn.com:7285"
-	PulsarAddrEU = "pulsar://mqe.tuyaeu.com:7285"
-	PulsarAddrUS = "pulsar://mqe.tuyaus.com:7285"
+	PulsarAddrCN = "pulsar+ssl://mqe.tuyacn.com:7285"
+	PulsarAddrEU = "pulsar+ssl://mqe.tuyaeu.com:7285"
+	PulsarAddrUS = "pulsar+ssl://mqe.tuyaus.com:7285"
 )
 
-type Message = msg.Message
+type Message = pulsar.Message
 
 type Client interface {
 	NewConsumer(config ConsumerConfig) (Consumer, error)
 }
 
-type Consumer interface {
-	ReceiveAndHandle(ctx context.Context, handler PayloadHandler)
-	Stop()
+type ProducerMessage struct {
+	Payload []byte
+	Key     string
 }
 
-type PayloadHandler interface {
-	HandlePayload(ctx context.Context, msg *Message, payload []byte) error
+type Consumer interface {
+	ReceiveAndHandle(ctx context.Context, handler PayloadHandlerV2)
+	Close() error
+}
+
+type PayloadHandlerV2 interface {
+	HandlePayload(ctx context.Context, msg Message, payload []byte) error
+}
+
+type clientImpl struct {
+	cli       pulsar.Client
+	clientCfg ClientConfig
 }
 
 type ClientConfig struct {
 	PulsarAddr string
+	Auth       interface{}
 }
 
-type client struct {
-	pool *manage.ClientPool
-	Addr string
+type ConsumerConfig struct {
+	Topic        string
+	Subscription string
+	Auth         interface{}
 }
 
 func NewClient(cfg ClientConfig) Client {
-	return &client{
-		pool: manage.NewClientPool(),
-		Addr: cfg.PulsarAddr,
+	return newClientV2(cfg)
+}
+
+func newClientV2(cfg ClientConfig) Client {
+	return clientImpl{clientCfg: cfg}
+}
+
+func (c clientImpl) NewConsumer(config ConsumerConfig) (Consumer, error) {
+	if config.Auth != nil || c.cli == nil {
+		client, err := pulsar.NewClient(pulsar.ClientOptions{
+			TLSAllowInsecureConnection: true,
+			URL:                        c.clientCfg.PulsarAddr,
+			Authentication:             config.Auth,
+		})
+		if err != nil {
+			tylog.Error("create clientImpl failed", tylog.ErrorField(err), tylog.Any("config", c.clientCfg))
+			return nil, err
+		}
+		tylog.Info("create clientImpl success", tylog.Any("config", c.clientCfg))
+		c.cli = client
 	}
+	consumer, err := c.cli.Subscribe(pulsar.ConsumerOptions{
+		Topic:            config.Topic,
+		SubscriptionName: subscriptionName(config.Topic),
+		Type:             pulsar.Failover,
+	})
+	if err != nil {
+		tylog.Error("create consumer failed", tylog.ErrorField(err), tylog.Any("config", config))
+		return nil, err
+	}
+	tylog.Info("create consumer success", tylog.Any("config", config))
+	return consumerV2{consumer}, nil
+}
+
+type consumerV2 struct {
+	consumer pulsar.Consumer
+}
+
+func (c consumerV2) ReceiveAndHandle(ctx context.Context, handler PayloadHandlerV2) {
+	for i := 0; i < 10; i++ {
+		go func() {
+			for {
+				msg, err := c.consumer.Receive(context.Background())
+				if err != nil {
+					tylog.Error("consumer receive failed", tylog.ErrorField(err), tylog.Any("consumer", c.consumer))
+					continue
+				}
+				err = handler.HandlePayload(ctx, msg, msg.Payload())
+				if err != nil {
+					tylog.Warn("consumer HandlePayload failed", tylog.ErrorField(err), tylog.Any("consumer", c.consumer), tylog.Any("msg", msg))
+				}
+				retryCount := 3
+				for j := 0; j < retryCount; j++ {
+					err := c.consumer.Ack(msg)
+					if err != nil {
+						tylog.Warn("ack failed", tylog.String("msg", string(msg.Payload())))
+						time.Sleep(time.Second)
+					}
+				}
+			}
+		}()
+	}
+	select {
+	case <-ctx.Done():
+		return
+	}
+}
+
+func (c consumerV2) Close() error {
+	c.consumer.Close()
+	return nil
+}
+
+func TopicForAccessID(accessID string) string {
+	topic := fmt.Sprintf("persistent://%s/out/event", accessID)
+	return topic
 }
 
 func subscriptionName(topic string) string {
@@ -61,83 +138,4 @@ func getTenant(topic string) string {
 	topic = strings.TrimPrefix(topic, "persistent://")
 	end := strings.Index(topic, "/")
 	return topic[:end]
-}
-
-func (c *client) NewConsumer(config ConsumerConfig) (Consumer, error) {
-	tylog.Info("start creating consumer",
-		tylog.String("pulsar", c.Addr),
-		tylog.String("topic", config.Topic),
-	)
-
-	errs := make(chan error, 10)
-	go func() {
-		for err := range errs {
-			tylog.Error("async errors", tylog.ErrorField(err))
-		}
-	}()
-	cfg := manage.ConsumerConfig{
-		ClientConfig: manage.ClientConfig{
-			Addr:       c.Addr,
-			AuthData:   config.Auth.AuthData(),
-			AuthMethod: config.Auth.AuthMethod(),
-			TLSConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
-			Errs: errs,
-		},
-		Topic:              config.Topic,
-		SubMode:            manage.SubscriptionModeFailover,
-		Name:               subscriptionName(config.Topic),
-		NewConsumerTimeout: time.Minute,
-	}
-	p := c.GetPartition(config.Topic, cfg.ClientConfig)
-
-	// partitioned topic
-	if p > 0 {
-		list := make([]*consumerImpl, 0, p)
-		originTopic := cfg.Topic
-		for i := 0; i < p; i++ {
-			cfg.Topic = fmt.Sprintf("%s-partition-%d", originTopic, i)
-			mc := manage.NewManagedConsumer(c.pool, cfg)
-			list = append(list, &consumerImpl{
-				csm:     mc,
-				topic:   cfg.Topic,
-				stopped: make(chan struct{}),
-			})
-		}
-		consumerList := &ConsumerList{
-			list:             list,
-			FlowPeriodSecond: DefaultFlowPeriodSecond,
-			FlowPermit:       DefaultFlowPermit,
-			Topic:            config.Topic,
-			Stopped:          make(chan struct{}),
-		}
-		return consumerList, nil
-	}
-
-	// single topic
-	mc := manage.NewManagedConsumer(c.pool, cfg)
-	tylog.Info("create consumer success",
-		tylog.String("pulsar", c.Addr),
-		tylog.String("topic", config.Topic),
-	)
-	return &consumerImpl{
-		csm:     mc,
-		topic:   cfg.Topic,
-		stopped: make(chan struct{}),
-	}, nil
-
-}
-
-func (c *client) GetPartition(topic string, config manage.ClientConfig) int {
-	p, err := c.pool.Partitions(context.Background(), config, topic)
-	if err != nil {
-		return 0
-	}
-	return int(p.GetPartitions())
-}
-
-func TopicForAccessID(accessID string) string {
-	topic := fmt.Sprintf("persistent://%s/out/event", accessID)
-	return topic
 }

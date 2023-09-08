@@ -38,7 +38,7 @@ type helloHandler struct {
 	AesSecret string
 }
 
-func (h *helloHandler) HandlePayload(ctx context.Context, msg *pulsar.Message, payload []byte) error {
+func (h *helloHandler) HandlePayload(ctx context.Context, msg pulsar.Message, payload []byte) error {
 	tylog.Info("payload preview", tylog.String("payload", string(payload)))
 
 	// let's decode the payload with AES
