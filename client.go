@@ -109,6 +109,8 @@ func (c consumerV2) ReceiveAndHandle(ctx context.Context, handler PayloadHandler
 					if err != nil {
 						tylog.Warn("ack failed", tylog.String("msg", string(msg.Payload())))
 						time.Sleep(time.Second)
+					}  else {
+						break
 					}
 				}
 			}
