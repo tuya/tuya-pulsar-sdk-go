@@ -3,6 +3,7 @@ package tylog
 import (
 	"time"
 
+	"github.com/sirupsen/logrus"
 	"github.com/tuya/tuya-pulsar-sdk-go/pkg/tyutils"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -30,6 +31,12 @@ func SetGlobalLog(appName string, prod bool, opts ...OptionFunc) {
 	}
 
 	log = NewLog(config)
+	hook := NewLogrusToZapHook(log)
+	// 配置 logrus 使用这个 Hook
+	logrus.AddHook(hook)
+	// 配置 logrus 的日志级别和输出格式
+	logrus.SetLevel(ZapToLogrusLevel(config.level.Level()))
+	logrus.SetFormatter(&logrus.JSONFormatter{})
 	sugarLog = log.Sugar()
 }
 
