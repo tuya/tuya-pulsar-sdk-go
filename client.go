@@ -3,10 +3,11 @@ package pulsar
 import (
 	"context"
 	"fmt"
-	"github.com/apache/pulsar-client-go/pulsar"
-	"github.com/tuya/tuya-pulsar-sdk-go/pkg/tylog"
 	"strings"
 	"time"
+
+	"github.com/apache/pulsar-client-go/pulsar"
+	"github.com/tuya/tuya-pulsar-sdk-go/pkg/tylog"
 )
 
 const (
@@ -99,20 +100,28 @@ func (c consumerV2) ReceiveAndHandle(ctx context.Context, handler PayloadHandler
 					tylog.Error("consumer receive failed", tylog.ErrorField(err), tylog.Any("consumer", c.consumer))
 					continue
 				}
+				start := time.Now()
+				id := MsgId(msg.ID())
+				tylog.Info("consume receive", tylog.Any("messageId", id))
 				err = handler.HandlePayload(ctx, msg, msg.Payload())
 				if err != nil {
 					tylog.Warn("consumer HandlePayload failed", tylog.ErrorField(err), tylog.Any("consumer", c.consumer), tylog.Any("msg", msg))
 				}
+				duration := time.Since(start)
+				ackStart := time.Now()
+				tylog.Info("consume handle finish", tylog.Any("messageId", id), tylog.Any("cost", duration))
 				retryCount := 3
 				for j := 0; j < retryCount; j++ {
 					err := c.consumer.Ack(msg)
 					if err != nil {
 						tylog.Warn("ack failed", tylog.String("msg", string(msg.Payload())))
 						time.Sleep(time.Second)
-					}  else {
+					} else {
 						break
 					}
 				}
+				ackDuration := time.Since(ackStart)
+				tylog.Info("consume ack finish", tylog.Any("messageId", id), tylog.Any("cost", ackDuration))
 			}
 		}()
 	}
@@ -120,6 +129,10 @@ func (c consumerV2) ReceiveAndHandle(ctx context.Context, handler PayloadHandler
 	case <-ctx.Done():
 		return
 	}
+}
+
+func MsgId(id pulsar.MessageID) string {
+	return fmt.Sprintf("%d:%d:%d:%d", id.LedgerID(), id.EntryID(), id.PartitionIdx(), id.BatchIdx())
 }
 
 func (c consumerV2) Close() error {
