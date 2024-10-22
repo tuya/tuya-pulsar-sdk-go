@@ -11,9 +11,10 @@ import (
 )
 
 const (
-	PulsarAddrCN = "pulsar+ssl://mqe.tuyacn.com:7285"
-	PulsarAddrEU = "pulsar+ssl://mqe.tuyaeu.com:7285"
-	PulsarAddrUS = "pulsar+ssl://mqe.tuyaus.com:7285"
+	PulsarAddrCN  = "pulsar+ssl://mqe.tuyacn.com:7285"
+	PulsarAddrEU  = "pulsar+ssl://mqe.tuyaeu.com:7285"
+	PulsarAddrUS  = "pulsar+ssl://mqe.tuyaus.com:7285"
+	PulsarAddrIND = "pulsar+ssl://mqe.tuyain.com:7285"
 )
 
 type Message = pulsar.Message

@@ -41,6 +41,7 @@ type helloHandler struct {
 func (h *helloHandler) HandlePayload(ctx context.Context, msg pulsar.Message, payload []byte) error {
 	tylog.Info("payload preview", tylog.String("payload", string(payload)))
 
+	decryptModel := msg.Properties()["em"]
 	// let's decode the payload with AES
 	m := map[string]interface{}{}
 	err := json.Unmarshal(payload, &m)
@@ -54,7 +55,7 @@ func (h *helloHandler) HandlePayload(ctx context.Context, msg pulsar.Message, pa
 		tylog.Error("base64 decode failed", tylog.ErrorField(err))
 		return nil
 	}
-	decode := tyutils.EcbDecrypt(de, []byte(h.AesSecret))
+	decode, err := tyutils.Decrypt(de, []byte(h.AesSecret), decryptModel)
 	tylog.Info("aes decode", tylog.ByteString("decode payload", decode))
 
 	return nil
