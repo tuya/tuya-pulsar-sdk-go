@@ -84,8 +84,7 @@ func (h *helloHandler) HandlePayload(ctx context.Context, msg pulsar.Message, pa
 ## Precautions
 
 1. Make sure that the accessID and accessKey are correct.
-2. Make sure that the Pulsar address is correct, you should use `pulsar://mqe.tuyaus.com:7285` instead of
-`pulsar+ssl://mqe.tuyaus.com:7285`.
+2. Make sure that the Pulsar address is correct, For example `pulsar+ssl://mqe.tuyaus.com:7285`.
 3. Make sure that the SDK code version you use is the latest.
 
 ## About debug
