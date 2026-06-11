@@ -32,9 +32,7 @@ func SetGlobalLog(appName string, prod bool, opts ...OptionFunc) {
 
 	log = NewLog(config)
 	hook := NewLogrusToZapHook(log)
-	// 配置 logrus 使用这个 Hook
 	logrus.AddHook(hook)
-	// 配置 logrus 的日志级别和输出格式
 	logrus.SetLevel(ZapToLogrusLevel(config.level.Level()))
 	logrus.SetFormatter(&logrus.JSONFormatter{})
 	sugarLog = log.Sugar()
@@ -49,7 +47,6 @@ func NewLog(config *LogConfig) *zap.Logger {
 	}
 	filePath := config.dir + "/" + config.appName + ".log"
 
-	// lumberjack 实现了一些日志分割的功能
 	jLoger := &lumberjack.Logger{
 		Filename:   filePath,
 		MaxSize:    config.maxSize,
@@ -136,7 +133,6 @@ func ProdLogConfig(appName string) *LogConfig {
 	return c
 }
 
-// 日志滚动周期
 func RotatePeriod(l *lumberjack.Logger, periodSecond int64) {
 	now := time.Now().Unix()
 	tickSecond := periodSecond - now%periodSecond

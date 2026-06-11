@@ -16,8 +16,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	// tylog 包级 logger 默认 nil，未初始化时 Debug/Warn/Error 会 panic。
-	// 用临时目录避免污染工作目录。
+	// tylog package-level logger is nil by default; use a temp dir to avoid polluting the working directory.
 	dir, err := os.MkdirTemp("", "tuya-pulsar-sdk-test-")
 	if err != nil {
 		panic(err)
@@ -166,7 +165,7 @@ func TestReceiveAndHandle_HandlerErrorTriggersNack(t *testing.T) {
 
 func TestReceiveAndHandle_LegacyAckOnHandleError(t *testing.T) {
 	fc := &fakeConsumer{receiveFn: onceThenBlock()}
-	// nackOnHandleError=false 保留旧 SDK 把 err 也 Ack 掉的 buggy 语义
+	// nackOnHandleError=false preserves the legacy SDK behaviour of Ack-ing even on handler error.
 	c := consumerV2{consumer: fc, workerNum: 1, ackWorkerNum: 1, nackOnHandleError: false}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -178,7 +177,7 @@ func TestReceiveAndHandle_LegacyAckOnHandleError(t *testing.T) {
 		c.ReceiveAndHandle(ctx, stubHandler{err: errors.New("boom")})
 	}()
 
-	// 等 Ack 真的被调用
+	// poll until Ack is actually called
 	deadline := time.Now().Add(2 * time.Second)
 	for fc.ackCount.Load() == 0 && time.Now().Before(deadline) {
 		time.Sleep(10 * time.Millisecond)
@@ -247,7 +246,7 @@ func TestAckOne_CtxCancelInterruptsBackoff(t *testing.T) {
 	select {
 	case <-done:
 	case <-time.After(time.Second):
-		t.Fatal("ackOne 未在退避期间响应 ctx 取消")
+		t.Fatal("ackOne did not respond to ctx cancellation during backoff")
 	}
 	if got := fc.ackCount.Load(); got != 1 {
 		t.Errorf("expected exactly 1 Ack attempt before ctx cancel, got %d", got)
@@ -271,14 +270,14 @@ func TestAcquireClient_CachesWhenNoAuth(t *testing.T) {
 	c := &clientImpl{clientCfg: ClientConfig{PulsarAddr: PulsarAddrCN}}
 	a, owned, err := c.acquireClient(ConsumerConfig{Topic: "persistent://t/out/event"})
 	if err != nil {
-		t.Fatalf("acquireClient 第一次失败: %v", err)
+		t.Fatalf("acquireClient first call failed: %v", err)
 	}
 	if owned {
 		t.Error("shared client should have owned=false")
 	}
 	b, _, err := c.acquireClient(ConsumerConfig{Topic: "persistent://t/out/event"})
 	if err != nil {
-		t.Fatalf("acquireClient 第二次失败: %v", err)
+		t.Fatalf("acquireClient second call failed: %v", err)
 	}
 	if a != b {
 		t.Error("no-auth calls should reuse the same cached client")
@@ -293,7 +292,7 @@ func TestAcquireClient_AuthGetsDedicatedClient(t *testing.T) {
 	auth := NewAuthProvider("id", "key")
 	a, owned, err := c.acquireClient(ConsumerConfig{Topic: "persistent://t/out/event", Auth: auth})
 	if err != nil {
-		t.Fatalf("acquireClient 第一次失败: %v", err)
+		t.Fatalf("acquireClient first call failed: %v", err)
 	}
 	if !owned {
 		t.Error("dedicated client should have owned=true")
@@ -303,7 +302,7 @@ func TestAcquireClient_AuthGetsDedicatedClient(t *testing.T) {
 	}
 	b, _, err := c.acquireClient(ConsumerConfig{Topic: "persistent://t/out/event", Auth: auth})
 	if err != nil {
-		t.Fatalf("acquireClient 第二次失败: %v", err)
+		t.Fatalf("acquireClient second call failed: %v", err)
 	}
 	if a == b {
 		t.Error("auth consumers should each get a separate dedicated client")
@@ -400,7 +399,7 @@ func TestConsumerClosed(t *testing.T) {
 // TestReceiveLoop_ExitsOnConsumerClosed verifies that receiveLoop exits immediately when the consumer
 // is closed (without a ctx cancellation), rather than looping forever with backoff.
 func TestReceiveLoop_ExitsOnConsumerClosed(t *testing.T) {
-	// 用极长退避放大效果：若没识别 closed，会卡在退避里超时
+	// use a huge backoff to amplify the effect: without ConsumerClosed detection the loop would hang here
 	defer swapBackoff(&receiveBackoffSteps, []time.Duration{time.Hour})()
 
 	fc := &fakeConsumer{
