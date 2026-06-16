@@ -9,7 +9,7 @@ const (
 	FormatEnumJSON    FormatEnum = "json"
 	FormatEnumConsole FormatEnum = "console"
 
-	DefaultRotatePeriodSecond int64 = 60 * 60 * 24 // 一天
+	DefaultRotatePeriodSecond int64 = 60 * 60 * 24 // one day
 )
 
 var (
@@ -18,25 +18,26 @@ var (
 )
 
 type LogConfig struct {
-	// 中国区使用true
+	// localTime: true uses local time in log filenames (recommended for CN deployments).
 	localTime bool
-	// MultiWrite 如果为true，日志会同时写入文件和终端，默认为true
+	// multiWrite: when true, logs are written to both the file and stderr. Default false.
+	// Enable with WithMultiWriteOption(true) to see terminal output.
 	multiWrite bool
-	// 日志级别，默认为debug
+	// level: log level. Default DebugLevel.
 	level LevelEnum
-	// AppName 默认为tmp
+	// appName: default "tmp".
 	appName string
-	// Dir 日志文件存放目录，默认为logs
+	// dir: log file directory. Default "logs".
 	dir string
-	// Format默认为console，方便调试
+	// format: default console (easier to read during development).
 	format FormatEnum
 	// hook
 	Hooks []LogHook
-	// 单个log文件最大size，默认为100M
+	// maxSize: max size of a single log file in MB. Default 100.
 	maxSize int
-	// 日志按时间分割，默认为一天
+	// rotatePeriodSecond: log rotation interval. Default one day.
 	rotatePeriodSecond int64
-	// max num of rotated backups, zero means infinite
+	// maxBackups: max number of rotated backup files. Zero means unlimited.
 	maxBackups int
 }
 
