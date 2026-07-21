@@ -10,12 +10,16 @@ import (
 	"github.com/tuya/tuya-pulsar-sdk-go/pkg/tyutils"
 )
 
+var MqEnvProd string = "event"
+var MqEnvTest string ="event-test"
+
 func main() {
 	// SetInternalLogLevel(logrus.DebugLevel)
 	tylog.SetGlobalLog("sdk", false)
 	accessID := "accessID"
 	accessKey := "accessKey"
-	topic := pulsar.TopicForAccessID(accessID)
+	env := MqEnvProd
+	topic := pulsar.TopicForAccessID(accessID，env)
 
 	// create client
 	cfg := pulsar.ClientConfig{
